@@ -67,12 +67,11 @@ func ConvertCurrency(responseWriter http.ResponseWriter, request *http.Request) 
 	log.Printf("responseFromCurrencyConverterAPI", responseFromCurrencyConverterAPI)
 
 	if responseFromCurrencyConverterAPI.StatusCode != 200 {
-		responseWriter.Header().Set("Content-Type", "text/json")
+		responseWriter.Header().Set("Content-Type", "text/plain")
 		responseWriter.WriteHeader(responseFromCurrencyConverterAPI.StatusCode)
 		b, _ := ioutil.ReadAll(responseFromCurrencyConverterAPI.Body)
 		log.Println("response body converted", b)
 		log.Println("response body", responseFromCurrencyConverterAPI.Body)
-		//responseWriter.Write(string(b))
 		responseWriter.Write(b)
 		return
 	}
