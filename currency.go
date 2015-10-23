@@ -35,9 +35,7 @@ func ConvertCurrency(responseWriter http.ResponseWriter, request *http.Request) 
 	baseAmount := request.FormValue("amount")
 
 	baseAmountInFloat, _ := strconv.ParseFloat(baseAmount, 64)
-	log.Printf("baseAmountInFloat", baseAmountInFloat)
-	log.Printf("baseAmountLenght", len(baseAmount))
-	log.Printf("en(baseCurrency) <= 2", len(baseCurrency) <= 2)
+
 	if len(baseAmount) == 0 {
 		responseWriter.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintln(responseWriter, "Invalid Amount or Amount not entered")
@@ -70,8 +68,6 @@ func ConvertCurrency(responseWriter http.ResponseWriter, request *http.Request) 
 		responseWriter.Header().Set("Content-Type", "text/plain")
 		responseWriter.WriteHeader(responseFromCurrencyConverterAPI.StatusCode)
 		b, _ := ioutil.ReadAll(responseFromCurrencyConverterAPI.Body)
-		log.Println("response body converted", b)
-		log.Println("response body", responseFromCurrencyConverterAPI.Body)
 		responseWriter.Write(b)
 		return
 	}
