@@ -17,11 +17,7 @@ import (
 )
 
 func init() {
-
-	//router := mux.NewRouter().StrictSlash(true)
-	http.HandleFunc("/currency", ConvertCurrency)
-	//router.HandleFunc("/currency", ConvertCurrency)
-	//log.Fatal(http.ListenAndServe(":8090", router))
+	http.HandleFunc("/convert", ConvertCurrency)
 }
 
 //ConvertCurrency function is called when a url with path/currency is requested
@@ -39,16 +35,26 @@ func ConvertCurrency(responseWriter http.ResponseWriter, request *http.Request) 
 	baseAmount := request.FormValue("amount")
 
 	baseAmountInFloat, _ := strconv.ParseFloat(baseAmount, 64)
-	//usr := u.users[id]
+	log.Printf("baseAmountInFloat", baseAmountInFloat)
+	log.Printf("baseAmountLenght", len(baseAmount))
+	log.Printf("en(baseCurrency) <= 2", len(baseCurrency) <= 2)
 	if len(baseAmount) == 0 {
 		responseWriter.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintln(responseWriter, "Invalid Amount or Amount not entered")
 		return
 	}
 
-	if len(baseCurrency) < 2 {
+	if len(baseCurrency) <= 2 {
 		responseWriter.Header().Set("Content-Type", "text/plain")
 		responseWriter.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintln(responseWriter, "Invalid Currency Input")
+		fmt.Fprintln(responseWriter, "Invalid Currency Input or Currency is missing")
+		return
+	}
+
+	if baseAmountInFloat == 0 {
+		responseWriter.Header().Set("Content-Type", "text/plain")
+		responseWriter.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintln(responseWriter, "Amount can be greater then zero")
 		return
 	}
 	//convertedAmountinForeignCurrencies is used to map the response from currency convert API
@@ -58,22 +64,25 @@ func ConvertCurrency(responseWriter http.ResponseWriter, request *http.Request) 
 	//FOREX service API response is different from the requirements for shipwallets currenyConvertion Service
 	//Hence we map response from forexapi service (convertedAmountinForeignCurrencies) to amountinForeignCurrencies(convertedCurrency)
 	//convertedCurrency is used to map the response as per the requirments
+	log.Printf("responseFromCurrencyConverterAPI", responseFromCurrencyConverterAPI)
 
 	if responseFromCurrencyConverterAPI.StatusCode != 200 {
+		responseWriter.Header().Set("Content-Type", "text/json")
 		responseWriter.WriteHeader(responseFromCurrencyConverterAPI.StatusCode)
 		b, _ := ioutil.ReadAll(responseFromCurrencyConverterAPI.Body)
+		log.Println("response body converted", b)
+		log.Println("response body", responseFromCurrencyConverterAPI.Body)
+		//responseWriter.Write(string(b))
 		responseWriter.Write(b)
 		return
 	}
 
 	amountinForeignCurrenciesInJSON, _ := json.Marshal(amountinForeignCurrencies)
-
 	if isXMLResponseRequested {
 		responseWriter.Header().Set("Content-Type", "application/xml")
 	} else {
 		responseWriter.Header().Set("Content-Type", "application/json")
 	}
-
 	if isXMLResponseRequested {
 		//Just a wrapper on json.Unmarshal
 		//	Converting JSON to XML is a simple as:
@@ -118,17 +127,18 @@ type convertedCurrency struct {
 func CalculateCurrency(baseCurrency string, baseAmount float64, appEngineContext appengine.Context) (response *http.Response, convertedCurrency currencyFromAPI) {
 
 	url := "http://api.fixer.io/latest?base=" + baseCurrency
-
-	appEngineClient := urlfetch.Client(appEngineContext)
+	appEngineContext.Infof("Requested URL: %v", url)
+	appEngineHttpClient := urlfetch.Client(appEngineContext)
 	request, err := http.NewRequest("GET", url, nil)
-	response, err = appEngineClient.Do(request)
+	response, err = appEngineHttpClient.Do(request)
 	if err != nil {
 		panic(err)
+		appEngineContext.Errorf("%v", err)
 	}
 	defer response.Body.Close()
 
-	log.Println("response Status:", response.Status)
-	log.Println("response Headers:", response.Header)
+	appEngineContext.Infof("response Status: %v", response.Status)
+	appEngineContext.Infof("response Headers: %v", response.Header)
 	body, _ := ioutil.ReadAll(response.Body)
 
 	convertedCurrency = currencyFromAPI{}
